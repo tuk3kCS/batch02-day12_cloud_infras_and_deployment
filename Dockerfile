@@ -4,9 +4,9 @@
 # Stage 1: Build the frontend
 FROM node:18-alpine AS frontend-builder
 WORKDIR /frontend
-COPY frontend/package*.json ./
+COPY 06-lab-complete/frontend/package*.json ./
 RUN npm install
-COPY frontend/ ./
+COPY 06-lab-complete/frontend/ ./
 RUN npm run build
 
 # Stage 2: Build python dependencies
@@ -34,7 +34,7 @@ COPY 06-lab-complete/Dockerfile ./06-lab-complete/Dockerfile
 COPY 06-lab-complete/railway.toml ./06-lab-complete/railway.toml
 COPY 06-lab-complete/render.yaml ./06-lab-complete/render.yaml
 COPY 06-lab-complete/nginx.conf ./06-lab-complete/nginx.conf
-COPY frontend/package.json ./frontend/package.json
+COPY 06-lab-complete/frontend/package.json ./frontend/package.json
 COPY .github/ ./.github/
 COPY prometheus.yml ./prometheus.yml
 
