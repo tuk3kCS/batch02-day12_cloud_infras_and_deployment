@@ -37,6 +37,15 @@ services:
     depends_on:
       agent:
         condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - agent
     restart: unless-stopped
 
   redis:
