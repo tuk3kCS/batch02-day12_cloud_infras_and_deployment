@@ -136,9 +136,6 @@ async def main() -> None:
                     results[name] = {"ok": resp.status_code < 400, "code": resp.status_code, "url": cfg["url"]}
                 except Exception as exc:
                     results[name] = {"ok": False, "code": None, "url": cfg["url"], "error": str(exc)[:80]}
-        # debug env keys
-        env_keys = [k for k in os.environ.keys() if "API_KEY" in k or k.startswith("OPEN")]
-        results["debug_env_keys"] = env_keys
         return results
 
     @app.post("/api/demo/send", tags=["demo"])
