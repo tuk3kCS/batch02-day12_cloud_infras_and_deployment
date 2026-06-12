@@ -92,6 +92,21 @@ async def main() -> None:
     )
     app = app_builder.build()
 
+    # Serve the agent_interaction_demo.html at "/"
+    from fastapi.responses import HTMLResponse
+    from pathlib import Path
+
+    app.routes = [r for r in app.routes if r.path != "/"]
+
+    @app.get("/", response_class=HTMLResponse)
+    async def serve_demo():
+        demo_path = Path("/app/agent_interaction_demo.html")
+        if not demo_path.exists():
+            demo_path = Path(__file__).resolve().parents[1] / "agent_interaction_demo.html"
+        if demo_path.exists():
+            return HTMLResponse(content=demo_path.read_text(encoding="utf-8"))
+        return HTMLResponse(content="<h1>agent_interaction_demo.html not found</h1>", status_code=404)
+
     # Challenge 2: API key auth (enabled when A2A_API_KEY is set in .env)
     from common.auth import add_auth_middleware
     add_auth_middleware(app)

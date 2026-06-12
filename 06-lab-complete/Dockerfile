@@ -33,6 +33,7 @@ COPY customer_agent/ ./customer_agent/
 COPY law_agent/ ./law_agent/
 COPY tax_agent/ ./tax_agent/
 COPY start_all.py ./start_all.py
+COPY agent_interaction_demo.html ./agent_interaction_demo.html
 
 RUN chown -R agent:agent /app /home/agent/.local
 

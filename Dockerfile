@@ -28,6 +28,7 @@ COPY 06-lab-complete/customer_agent/ ./customer_agent/
 COPY 06-lab-complete/law_agent/ ./law_agent/
 COPY 06-lab-complete/tax_agent/ ./tax_agent/
 COPY 06-lab-complete/start_all.py ./start_all.py
+COPY 06-lab-complete/agent_interaction_demo.html ./agent_interaction_demo.html
 # Copy the compiled frontend files from Stage 1
 COPY --from=frontend-builder /frontend/dist ./frontend-dist
 
