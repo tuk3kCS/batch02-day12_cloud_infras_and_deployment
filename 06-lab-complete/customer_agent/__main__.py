@@ -96,7 +96,9 @@ async def main() -> None:
     from fastapi.responses import HTMLResponse
     from pathlib import Path
 
-    app.routes = [r for r in app.routes if r.path != "/"]
+    for r in list(app.routes):
+        if r.path == "/":
+            app.routes.remove(r)
 
     @app.get("/", response_class=HTMLResponse)
     async def serve_demo():

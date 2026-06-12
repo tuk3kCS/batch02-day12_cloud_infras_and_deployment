@@ -57,11 +57,28 @@ def main():
     # Start modules one by one with a slight delay
     for module in MODULES:
         logger.info("Starting module: python -m %s", module)
+        python_exe = sys.executable
+        # On Windows, sys.executable inside uv can sometimes point to the base system interpreter
+        # instead of the virtualenv python. Fallback to "python" to look it up in PATH.
+        if "venv" not in python_exe.lower() and ".venv" not in python_exe.lower():
+            python_exe = "python"
+
+        # Propagate virtualenv site-packages and app directories to PYTHONPATH for subprocesses
+        env = os.environ.copy()
+        python_path_entries = [p for p in sys.path if "site-packages" in p or "dist-packages" in p or ".venv" in p or p == os.getcwd()]
+        if python_path_entries:
+            sep = ";" if os.name == "nt" else ":"
+            existing_pp = env.get("PYTHONPATH", "")
+            if existing_pp:
+                env["PYTHONPATH"] = sep.join(python_path_entries) + sep + existing_pp
+            else:
+                env["PYTHONPATH"] = sep.join(python_path_entries)
+
         p = subprocess.Popen(
-            [sys.executable, "-m", module],
+            [python_exe, "-m", module],
             stdout=sys.stdout,
             stderr=sys.stderr,
-            env=os.environ.copy()
+            env=env
         )
         processes.append(p)
         # Give registry/agents some time to start up and bind to ports
