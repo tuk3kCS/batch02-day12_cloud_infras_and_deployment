@@ -23,7 +23,7 @@ WORKDIR /app
 COPY --from=builder /root/.local /home/agent/.local
 COPY 06-lab-complete/app/ ./app/
 # Copy the compiled frontend files from Stage 1
-COPY --from=frontend-builder /06-lab-complete/frontend-dist ./frontend-dist
+COPY --from=frontend-builder /frontend/dist ./frontend-dist
 
 # Copy metadata/config files for the dashboard repository inventory
 COPY README.md ./README.md
