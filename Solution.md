@@ -1,5 +1,8 @@
 # Day 12 Lab - Mission Answers
 
+> URL: https://batch02-day12cloudinfrasanddeployment-production.up.railway.app/
+> Dashboard: https://batch02-day12cloudinfrasanddeployment-production.up.railway.app/dashboard
+
 ---
 
 ## Part 1: Localhost vs Production
