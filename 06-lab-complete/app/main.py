@@ -91,9 +91,22 @@ def log_event(event: str, **fields: Any) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _is_ready, _redis
+    session_file = Path(".session_initialized")
     try:
         _redis = redis.from_url(settings.redis_url, decode_responses=True)
         _redis.ping()
+        
+        # Clear old worker requests and active workers from Redis to start a fresh session (only once per container startup)
+        if not session_file.exists():
+            try:
+                _redis.delete("active_workers")
+                keys = _redis.keys("worker:requests:*")
+                if keys:
+                    _redis.delete(*keys)
+                session_file.write_text(str(time.time()))
+            except Exception:
+                pass
+                
         _is_ready = True
         log_event("startup", redis="connected", environment=settings.environment)
     except Exception as exc:
@@ -106,6 +119,14 @@ async def lifespan(app: FastAPI):
     _is_ready = False
     if _redis is not None:
         _redis.close()
+        
+    # Remove session file on shutdown
+    try:
+        if session_file.exists():
+            session_file.unlink()
+    except Exception:
+        pass
+        
     log_event("shutdown")
 
 
