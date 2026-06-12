@@ -25,6 +25,15 @@ COPY 06-lab-complete/app/ ./app/
 # Copy the compiled frontend files from Stage 1
 COPY --from=frontend-builder /06-lab-complete/frontend-dist ./frontend-dist
 
+# Copy metadata/config files for the dashboard repository inventory
+COPY README.md ./README.md
+COPY Dockerfile ./Dockerfile
+COPY railway.toml ./railway.toml
+COPY 06-lab-complete/docker-compose.yml ./06-lab-complete/docker-compose.yml
+COPY 06-lab-complete/Dockerfile ./06-lab-complete/Dockerfile
+COPY 06-lab-complete/railway.toml ./06-lab-complete/railway.toml
+COPY 06-lab-complete/render.yaml ./06-lab-complete/render.yaml
+
 RUN chown -R agent:agent /app /home/agent/.local
 
 USER agent
@@ -33,6 +42,7 @@ ENV PATH=/home/agent/.local/bin:$PATH
 ENV PYTHONPATH=/app:/home/agent/.local/lib/python3.11/site-packages
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV REPO_ROOT=/app
 
 EXPOSE 8000
 
