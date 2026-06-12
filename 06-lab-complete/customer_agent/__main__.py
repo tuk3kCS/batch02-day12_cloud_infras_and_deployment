@@ -136,6 +136,9 @@ async def main() -> None:
                     results[name] = {"ok": resp.status_code < 400, "code": resp.status_code, "url": cfg["url"]}
                 except Exception as exc:
                     results[name] = {"ok": False, "code": None, "url": cfg["url"], "error": str(exc)[:80]}
+        # debug env prefixes
+        results["openai_prefix"] = os.getenv("OPENAI_API_KEY", "")[:8]
+        results["openrouter_prefix"] = os.getenv("OPENROUTER_API_KEY", "")[:8]
         return results
 
     @app.post("/api/demo/send", tags=["demo"])
