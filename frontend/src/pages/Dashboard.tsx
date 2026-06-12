@@ -57,7 +57,8 @@ export function Dashboard({ data }: Props) {
               ["Compose files", data.inventory.counts.composeFiles, Server],
               ["CI/CD configs", data.inventory.counts.cicdWorkflows, GitBranch],
               ["Monitoring configs", data.inventory.counts.monitoringConfigs, Activity]
-            ].map(([label, value, Icon]: [string, number, any]) => {
+            ].map((item) => {
+              const [label, value, Icon] = item as [string, number, any];
               const IconComponent = Icon;
               return (
                 <div key={String(label)} className="panel-muted flex items-center justify-between p-4">
