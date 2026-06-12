@@ -14,7 +14,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: "../06-lab-complete/frontend-dist",
+    outDir: "dist",
     emptyOutDir: true
   }
 });
