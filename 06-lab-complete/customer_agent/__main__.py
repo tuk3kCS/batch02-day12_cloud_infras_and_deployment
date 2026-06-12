@@ -139,6 +139,7 @@ async def main() -> None:
         # debug env prefixes
         results["openai_prefix"] = os.getenv("OPENAI_API_KEY", "")[:8]
         results["openrouter_prefix"] = os.getenv("OPENROUTER_API_KEY", "")[:8]
+        results["open_prefix"] = os.getenv("OPEN_API_KEY", "")[:8]
         return results
 
     @app.post("/api/demo/send", tags=["demo"])
