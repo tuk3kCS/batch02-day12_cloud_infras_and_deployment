@@ -50,7 +50,11 @@ async def delegate(
     Returns:
         The agent's text response, or an empty string if none could be extracted.
     """
-    async with httpx.AsyncClient(timeout=300.0) as http_client:
+    import os
+    api_key = os.getenv("A2A_API_KEY", "").strip()
+    headers = {"X-API-Key": api_key} if api_key else {}
+
+    async with httpx.AsyncClient(timeout=300.0, headers=headers) as http_client:
         # Fetch agent card (cached after first call)
         if endpoint not in _card_cache:
             card_url = f"{endpoint}/.well-known/agent.json"

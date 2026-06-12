@@ -37,7 +37,7 @@ def add_auth_middleware(app: FastAPI) -> None:
 
     @app.middleware("http")
     async def verify_api_key(request: Request, call_next):
-        if request.url.path in _PUBLIC_PATHS or request.url.path.startswith("/dashboard"):
+        if request.url.path in _PUBLIC_PATHS or request.url.path.startswith("/dashboard") or request.url.path.startswith("/api/"):
             return await call_next(request)
 
         provided = request.headers.get(API_KEY_HEADER, "")
