@@ -100,6 +100,7 @@ async def lifespan(app: FastAPI):
         if not session_file.exists():
             try:
                 _redis.delete("active_workers")
+                _redis.delete("dashboard:logs")
                 keys = _redis.keys("worker:requests:*")
                 if keys:
                     _redis.delete(*keys)
