@@ -14,18 +14,52 @@ from pathlib import Path
 from typing import Any
 
 
+import redis
+from app.config import settings
+
 LOG_BUFFER: deque[dict[str, Any]] = deque(maxlen=200)
+REDIS_LOG_KEY = "dashboard:logs"
+MAX_LOG_COUNT = 200
+_redis_client: redis.Redis | None = None
+
+
+def get_redis_client() -> redis.Redis | None:
+    global _redis_client
+    if _redis_client is None:
+        try:
+            _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+        except Exception:
+            pass
+    return _redis_client
 
 
 def record_log(event: str, instance: str, **fields: Any) -> None:
-    LOG_BUFFER.appendleft(
-        {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "event": event,
-            "instance": instance,
-            **fields,
-        }
-    )
+    log_item = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": event,
+        "instance": instance,
+        **fields,
+    }
+    LOG_BUFFER.appendleft(log_item)
+    try:
+        r = get_redis_client()
+        if r is not None:
+            r.lpush(REDIS_LOG_KEY, json.dumps(log_item))
+            r.ltrim(REDIS_LOG_KEY, 0, MAX_LOG_COUNT - 1)
+    except Exception:
+        pass
+
+
+def get_logs() -> list[dict[str, Any]]:
+    try:
+        r = get_redis_client()
+        if r is not None:
+            raw_logs = r.lrange(REDIS_LOG_KEY, 0, -1)
+            if raw_logs:
+                return [json.loads(item) for item in raw_logs]
+    except Exception:
+        pass
+    return list(LOG_BUFFER)
 
 
 def repo_root() -> Path:
@@ -251,6 +285,6 @@ def dashboard_state(
         },
         "containers": services,
         "resources": resource_usage,
-        "logs": list(LOG_BUFFER),
+        "logs": get_logs(),
         "environment": settings_snapshot,
     }
