@@ -21,7 +21,13 @@ RUN groupadd -r agent && useradd -r -g agent -d /app agent
 WORKDIR /app
 
 COPY --from=builder /root/.local /home/agent/.local
-COPY 06-lab-complete/app/ ./app/
+COPY 06-lab-complete/common/ ./common/
+COPY 06-lab-complete/registry/ ./registry/
+COPY 06-lab-complete/compliance_agent/ ./compliance_agent/
+COPY 06-lab-complete/customer_agent/ ./customer_agent/
+COPY 06-lab-complete/law_agent/ ./law_agent/
+COPY 06-lab-complete/tax_agent/ ./tax_agent/
+COPY 06-lab-complete/start_all.py ./start_all.py
 # Copy the compiled frontend files from Stage 1
 COPY --from=frontend-builder /frontend/dist ./frontend-dist
 
@@ -48,10 +54,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV REPO_ROOT=/app
 
-EXPOSE 8000
+EXPOSE 10100
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.getenv(\"PORT\", \"8000\")}/health')" || exit 1
+    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.getenv(\"PORT\", \"10100\")}/health')" || exit 1
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
+CMD ["python", "start_all.py"]
 

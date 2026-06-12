@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent A2A Interaction Demo</title>
+<style>
+:root{--bg:#0f1117;--card:#1a1d2e;--card2:#22253a;--border:#2e3250;--accent:#6c63ff;--accent2:#00d2ff;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--orange:#f97316;--text:#e2e8f0;--muted:#8892b0;--font:'Segoe UI',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+h1,h2,h3{font-weight:700}
+a{color:var(--accent2)}
+
+/* Layout */
+.shell{max-width:1280px;margin:0 auto;padding:24px 20px}
+.header{text-align:center;padding:40px 20px 32px;background:linear-gradient(135deg,#1a1d2e 0%,#0f1117 100%);border-bottom:1px solid var(--border);margin-bottom:32px}
+.header h1{font-size:clamp(22px,4vw,36px);background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.header p{color:var(--muted);max-width:680px;margin:0 auto;line-height:1.6;font-size:15px}
+
+/* Grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}.grid3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.grid3{grid-template-columns:1fr}}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card h3{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px}
+
+/* Section labels */
+.section-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;font-weight:600}
+
+/* Inputs */
+textarea,input[type=text]{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:12px 14px;resize:vertical;outline:none;transition:border-color .2s}
+textarea:focus,input[type=text]:focus{border-color:var(--accent)}
+textarea{min-height:90px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;padding:10px 18px;transition:opacity .15s,transform .1s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.btn-sim{background:var(--card2);border:1px solid var(--border);color:var(--text)}
+.btn-sim:hover:not(:disabled){border-color:var(--accent)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:6px}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+
+/* Sample questions */
+.samples{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sample{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;transition:all .2s;color:var(--muted)}
+.sample:hover{border-color:var(--accent);color:var(--text)}
+
+/* Toggle */
+.toggle-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.toggle{position:relative;display:inline-block;width:36px;height:20px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:#3a3f5c;border-radius:20px;transition:.2s}
+.toggle-slider:before{content:"";position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--accent)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px)}
+
+/* Service status cards */
+.service-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+@media(max-width:900px){.service-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:500px){.service-grid{grid-template-columns:1fr 1fr}}
+.svc-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;transition:border-color .3s}
+.svc-card.ok{border-color:var(--green)}
+.svc-card.err{border-color:var(--red)}
+.svc-card.checking{border-color:var(--yellow)}
+.svc-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);margin:0 auto 6px;transition:background .3s}
+.svc-card.ok .svc-dot{background:var(--green)}
+.svc-card.err .svc-dot{background:var(--red)}
+.svc-card.checking .svc-dot{background:var(--yellow);animation:pulse 1s infinite}
+.svc-name{font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px}
+.svc-port{font-size:10px;color:var(--muted)}
+
+/* Agent flow diagram */
+.flow-diagram{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:20px;overflow-x:auto}
+.flow{display:flex;align-items:center;gap:0;flex-wrap:nowrap;min-width:700px}
+.node{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:90px}
+.node-box{border:2px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px;font-weight:600;text-align:center;transition:all .4s;position:relative;min-width:80px}
+.node-box.active{border-color:var(--accent);background:rgba(108,99,255,.15);box-shadow:0 0 16px rgba(108,99,255,.3)}
+.node-box.done{border-color:var(--green);background:rgba(34,197,94,.1)}
+.node-box.error{border-color:var(--red);background:rgba(239,68,68,.1)}
+.node-box.parallel-group{border-color:var(--orange);background:rgba(249,115,22,.08);border-style:dashed}
+.node-depth{font-size:9px;color:var(--muted);margin-top:2px}
+.arrow{color:var(--muted);font-size:18px;padding:0 4px;flex-shrink:0;transition:color .4s}
+.arrow.active{color:var(--accent2)}
+.parallel-col{display:flex;flex-direction:column;gap:10px}
+.parallel-label{font-size:9px;color:var(--orange);text-align:center;margin-bottom:4px;font-weight:600;text-transform:uppercase}
+
+/* Timeline */
+.timeline{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.tl-row{display:grid;grid-template-columns:140px 1fr 90px 80px;gap:8px;align-items:center;padding:8px 12px;border-radius:8px;background:var(--card2);border:1px solid var(--border);font-size:13px;transition:all .3s}
+.tl-row.running{border-color:var(--accent);background:rgba(108,99,255,.08)}
+.tl-row.completed{border-color:var(--green);background:rgba(34,197,94,.05)}
+.tl-row.error{border-color:var(--red);background:rgba(239,68,68,.05)}
+.tl-row.pending{opacity:.5}
+.tl-agent{font-weight:600;font-size:12px}
+.tl-action{color:var(--muted);font-size:12px}
+.tl-badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;text-align:center}
+.badge-pending{background:#3a3f5c;color:var(--muted)}
+.badge-running{background:rgba(108,99,255,.3);color:#a78bfa;animation:pulse 1s infinite}
+.badge-completed{background:rgba(34,197,94,.2);color:var(--green)}
+.badge-error{background:rgba(239,68,68,.2);color:var(--red)}
+.tl-dur{text-align:right;color:var(--muted);font-size:11px;font-family:monospace}
+
+/* Progress bar */
+.progress-wrap{margin:14px 0 4px;height:6px;background:var(--card2);border-radius:3px;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .5s ease;width:0}
+
+/* Result area */
+.result-box{background:var(--card2);border:1px solid var(--green);border-radius:10px;padding:16px;white-space:pre-wrap;line-height:1.7;font-size:14px;color:var(--text);max-height:400px;overflow-y:auto;display:none}
+.result-box.visible{display:block}
+.result-meta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:12px}
+.meta-tag{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--muted)}
+.meta-tag span{color:var(--text);font-family:monospace}
+
+/* Raw JSON */
+details.raw-panel{margin-top:10px}
+details.raw-panel summary{cursor:pointer;font-size:12px;color:var(--muted);padding:6px 0;user-select:none}
+details.raw-panel summary:hover{color:var(--text)}
+.raw-json{background:#0a0c13;border:1px solid var(--border);border-radius:8px;padding:14px;font-size:11px;font-family:'Courier New',monospace;color:#8be9fd;overflow:auto;max-height:300px;margin-top:6px;white-space:pre}
+
+/* Latency section */
+.lat-table{width:100%;border-collapse:collapse;font-size:13px}
+.lat-table th{background:var(--card2);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid var(--border)}
+.lat-table td{padding:8px 12px;border-bottom:1px solid #1e2138}
+.lat-table tr:last-child td{border-bottom:none}
+.lat-table .optimized{color:var(--green)}
+.lat-table .baseline{color:var(--yellow)}
+.lat-table .saving{color:var(--accent2);font-weight:600}
+
+/* Bar chart */
+.bar-chart{display:flex;flex-direction:column;gap:10px;padding:4px 0}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-label{width:120px;font-size:12px;color:var(--muted);flex-shrink:0;text-align:right}
+.bar-track{flex:1;height:22px;background:var(--card2);border-radius:4px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;transition:width 1s ease}
+.bar-baseline{background:linear-gradient(90deg,var(--yellow),var(--orange))}
+.bar-optimized{background:linear-gradient(90deg,var(--accent),var(--green))}
+.bar-val{width:50px;font-size:12px;font-family:monospace;text-align:right}
+
+/* Pill badges */
+.pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.pill-acc{background:rgba(108,99,255,.2);color:#a78bfa}
+.pill-grn{background:rgba(34,197,94,.2);color:var(--green)}
+.pill-org{background:rgba(249,115,22,.2);color:var(--orange)}
+
+/* Error banner */
+.error-banner{background:rgba(239,68,68,.1);border:1px solid var(--red);border-radius:8px;padding:12px 16px;color:var(--red);font-size:13px;display:none;margin-top:10px}
+.error-banner.visible{display:block}
+
+/* Animations */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .4s ease}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--card)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚖️ Multi-Agent A2A Interaction Demo</h1>
+  <p>Stage 5 — Distributed Legal Multi-Agent System using Google A2A Protocol.<br>
+  Five independent services communicate via HTTP with dynamic discovery through a central Registry.</p>
+</div>
+
+<div class="shell">
+
+  <!-- SERVICE STATUS -->
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3>Service Status</h3>
+      <button class="btn btn-sm btn-sim" onclick="checkStatus()">↺ Refresh</button>
+    </div>
+    <div class="service-grid" id="svcGrid">
+      <div class="svc-card checking" id="svc-registry">
+        <div class="svc-dot"></div>
+        <div class="svc-name">Registry</div>
+        <div class="svc-port">:10000</div>
+      </div>
+      <div class="svc-card checking" id="svc-customer">
+        <div class="svc-dot"></div>
+        <div class="svc-name">Customer Agent</div>
+        <div class="svc-port">:10100</div>
+      </div>
+      <div class="svc-card checking" id="svc-law">
+        <div class="svc-dot"></div>
+        <div class="svc-name">Law Agent</div>
+        <div class="svc-port">:10101</div>
+      </div>
+      <div class="svc-card checking" id="svc-tax">
+        <div class="svc-dot"></div>
+        <div class="svc-name">Tax Agent</div>
+        <div class="svc-port">:10102</div>
+      </div>
+      <div class="svc-card checking" id="svc-compliance">
+        <div class="svc-dot"></div>
+        <div class="svc-name">Compliance Agent</div>
+        <div class="svc-port">:10103</div>
+      </div>
+    </div>
+    <p id="statusNote" style="font-size:12px;color:var(--muted);margin-top:10px;display:none"></p>
+  </div>
+
+  <div class="grid2" style="margin-bottom:20px">
+
+    <!-- INPUT PANEL -->
+    <div class="card">
+      <h3>Legal Question</h3>
+      <div class="section-label">Enter your question</div>
+      <textarea id="questionInput" placeholder="Type a legal question or pick a sample below…">If a company breaks a contract and avoids taxes, what are the legal, tax, and compliance consequences?</textarea>
+
+      <div class="section-label" style="margin-top:14px">Sample questions</div>
+      <div class="samples">
+        <div class="sample" onclick="setSample(0)">Contract + tax evasion</div>
+        <div class="sample" onclick="setSample(1)">Foreign bank account FBAR</div>
+        <div class="sample" onclick="setSample(2)">GDPR data compliance</div>
+        <div class="sample" onclick="setSample(3)">SEC compliance breach</div>
+      </div>
+
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn btn-primary" id="btnLive" onclick="runLive()">▶ Run Stage 5 Demo</button>
+        <button class="btn btn-sim" id="btnSim" onclick="runSim()">⚡ Simulated Demo</button>
+      </div>
+
+      <div class="toggle-row" style="margin-top:14px">
+        <label class="toggle"><input type="checkbox" id="fastSim"><span class="toggle-slider"></span></label>
+        <span>Fast simulation (speed ×6)</span>
+        <span id="simSpeedTag" class="pill pill-acc" style="margin-left:auto">Normal speed (~16s)</span>
+      </div>
+
+      <div class="error-banner" id="errBanner"></div>
+    </div>
+
+    <!-- AGENT FLOW DIAGRAM -->
+    <div class="card">
+      <h3>Agent Topology</h3>
+      <div class="flow-diagram">
+        <div class="flow" id="agentFlow">
+          <div class="node">
+            <div class="node-box" id="fn-user">👤 User</div>
+            <div class="node-depth">Browser</div>
+          </div>
+          <div class="arrow" id="fa-0">→</div>
+          <div class="node">
+            <div class="node-box" id="fn-customer">Customer<br>Agent</div>
+            <div class="node-depth">depth=0 · :10100</div>
+          </div>
+          <div class="arrow" id="fa-1">→</div>
+          <div class="node">
+            <div class="node-box" id="fn-registry">Registry</div>
+            <div class="node-depth">discover · :10000</div>
+          </div>
+          <div class="arrow" id="fa-2">→</div>
+          <div class="node">
+            <div class="node-box" id="fn-law">Law<br>Agent</div>
+            <div class="node-depth">depth=1 · :10101</div>
+          </div>
+          <div class="arrow" id="fa-3">→</div>
+          <div class="parallel-col">
+            <div class="parallel-label">parallel</div>
+            <div class="node-box parallel-group" id="fn-tax">Tax Agent<br><span style="font-size:10px;font-weight:400;color:var(--muted)">depth=2 · :10102</span></div>
+            <div class="node-box parallel-group" id="fn-compliance">Compliance Agent<br><span style="font-size:10px;font-weight:400;color:var(--muted)">depth=2 · :10103</span></div>
+          </div>
+          <div class="arrow" id="fa-4">→</div>
+          <div class="node">
+            <div class="node-box" id="fn-aggregate">Aggregate<br>& Answer</div>
+            <div class="node-depth">final_answer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3>Execution Timeline</h3>
+      <span id="totalLatency" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="timeline" id="timeline">
+      <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">
+        Run a demo to see the agent execution timeline
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card" style="margin-bottom:20px" id="resultSection" style="display:none">
+    <h3>Final Answer</h3>
+    <div class="result-meta" id="resultMeta"></div>
+    <div class="result-box" id="resultBox"></div>
+    <div class="error-banner" id="resultError"></div>
+    <details class="raw-panel">
+      <summary>Raw JSON response (debug)</summary>
+      <pre class="raw-json" id="rawJson"></pre>
+    </details>
+  </div>
+
+  <!-- LATENCY ANALYSIS -->
+  <div class="card" style="margin-bottom:20px">
+    <h3>Latency Analysis</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+      Breakdown of where time is spent in a full Stage 5 request, and three optimizations that reduce overhead.
+    </p>
+
+    <div class="grid2">
+      <div>
+        <div class="section-label">Pipeline breakdown (per step)</div>
+        <table class="lat-table">
+          <thead><tr><th>Step</th><th>Baseline</th><th>Optimized</th><th>Saving</th></tr></thead>
+          <tbody>
+            <tr><td>analyze_law (LLM)</td><td class="baseline">~6s</td><td class="optimized">~6s</td><td class="saving">—</td></tr>
+            <tr><td>check_routing</td><td class="baseline">~4s (LLM)</td><td class="optimized">~0ms ✓</td><td class="saving">~4s</td></tr>
+            <tr><td>Tax + Compliance (∥)</td><td class="baseline">~5s</td><td class="optimized">~5s</td><td class="saving">—</td></tr>
+            <tr><td>aggregate (LLM)</td><td class="baseline">~5s</td><td class="optimized">~5s</td><td class="saving">—</td></tr>
+            <tr><td>Registry discover ×2</td><td class="baseline">~40ms</td><td class="optimized">~0ms ✓</td><td class="saving">~40ms</td></tr>
+            <tr><td>AgentCard fetch ×2</td><td class="baseline">~30ms</td><td class="optimized">~0ms ✓</td><td class="saving">~30ms</td></tr>
+            <tr><td>HTTP/A2A overhead</td><td class="baseline">~500ms</td><td class="optimized">~500ms</td><td class="saving">—</td></tr>
+            <tr style="font-weight:700"><td>Total</td><td class="baseline">~21s</td><td class="optimized">~16s</td><td class="saving">~5s (24%)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="section-label">Before vs After comparison</div>
+        <div class="bar-chart" id="barChart">
+          <div class="bar-row">
+            <div class="bar-label">Baseline</div>
+            <div class="bar-track"><div class="bar-fill bar-baseline" id="barBase" style="width:0">~21s</div></div>
+            <div class="bar-val">~21s</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Optimized</div>
+            <div class="bar-track"><div class="bar-fill bar-optimized" id="barOpt" style="width:0">~16s</div></div>
+            <div class="bar-val">~16s</div>
+          </div>
+          <div class="bar-row" id="barLiveRow" style="display:none">
+            <div class="bar-label">This run</div>
+            <div class="bar-track"><div class="bar-fill" id="barLive" style="width:0;background:linear-gradient(90deg,var(--accent2),var(--accent))"></div></div>
+            <div class="bar-val" id="barLiveVal">—</div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <div class="section-label">Optimizations implemented</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <div style="background:var(--card2);border:1px solid var(--green);border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:4px">✓ Opt 1: Keyword routing (saves ~4s)</div>
+              <div style="font-size:11px;color:var(--muted)"><code style="color:#a78bfa">check_routing</code> was calling LLM (~4s) to decide "needs_tax?" — a purely keyword-based decision. Replaced with <code style="color:#a78bfa">frozenset</code> matching in <code>law_agent/graph.py</code>.</div>
+            </div>
+            <div style="background:var(--card2);border:1px solid var(--accent2);border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:4px">✓ Opt 2: Registry discover cache (saves ~40ms)</div>
+              <div style="font-size:11px;color:var(--muted)">In-process <code style="color:#a78bfa">_discover_cache</code> dict in <code>common/registry_client.py</code>. Task→endpoint mappings are stable per run.</div>
+            </div>
+            <div style="background:var(--card2);border:1px solid var(--accent);border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:4px">✓ Opt 3: AgentCard cache (saves ~30ms)</div>
+              <div style="font-size:11px;color:var(--muted)">In-process <code style="color:#a78bfa">_card_cache</code> dict in <code>common/a2a_client.py</code>. AgentCard JSON is static while service is running.</div>
+            </div>
+            <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">○ Future: Streaming partial responses</div>
+              <div style="font-size:11px;color:var(--muted)">LLM inference (~16s) is the real bottleneck. Streaming lets users see results as they arrive instead of waiting for the full pipeline.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW TO RUN -->
+  <div class="card">
+    <h3>How to Run</h3>
+    <div class="grid3" style="margin-top:4px">
+      <div>
+        <div class="section-label">1. Start all services</div>
+        <div class="raw-json" style="font-size:11px;padding:10px;margin-top:4px"># Linux/macOS
+./start_all.sh
+
+# Windows PowerShell
+./start_all.ps1
+
+# Wait ~10s for all agents
+# to register with Registry</div>
+      </div>
+      <div>
+        <div class="section-label">2. Start the proxy</div>
+        <div class="raw-json" style="font-size:11px;padding:10px;margin-top:4px"># Activate venv first:
+.venv\Scripts\activate  # Win
+source .venv/bin/activate  # Mac
+
+python demo_proxy.py
+# Starts on :8765
+
+# Or use uv:
+uv run python demo_proxy.py</div>
+      </div>
+      <div>
+        <div class="section-label">3. Test</div>
+        <div class="raw-json" style="font-size:11px;padding:10px;margin-top:4px"># Open this file in browser:
+agent_interaction_demo.html
+
+# Or via proxy (auto-serves HTML):
+http://localhost:8765
+
+# CLI test:
+python test_client.py</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
+
+<script>
+// ─────────────────────────────────────────────
+// Constants & State
+// ─────────────────────────────────────────────
+const PROXY = 'http://localhost:8765';
+
+const SAMPLES = [
+  "If a company breaks a contract and avoids taxes, what are the legal, tax, and compliance consequences?",
+  "A company failed to report foreign bank accounts (FBAR). What are the legal and tax consequences?",
+  "Does GDPR compliance matter if a company collects customer data from EU citizens?",
+  "A company violated SEC reporting requirements. What compliance and legal risks does it face?"
+];
+
+const TIMELINE_STEPS = [
+  { id:'tl-0',  agent:'Customer Agent',    action:'Receive request & start ReAct loop', depth:0, dur:0.5 },
+  { id:'tl-1',  agent:'Customer Agent',    action:'LLM decides: call delegate_to_legal_agent tool', depth:0, dur:2.0 },
+  { id:'tl-2',  agent:'Customer Agent',    action:'discover("legal_question") → Registry', depth:0, dur:0.1 },
+  { id:'tl-3',  agent:'Law Agent',         action:'Receive delegation (depth=1)', depth:1, dur:0.2 },
+  { id:'tl-4',  agent:'Law Agent',         action:'[analyze_law] LLM: contract/tort analysis', depth:1, dur:6.0 },
+  { id:'tl-5',  agent:'Law Agent',         action:'[check_routing] keyword match → needs_tax + needs_compliance', depth:1, dur:0.01 },
+  { id:'tl-6a', agent:'Tax Agent',         action:'[parallel] Receive delegation (depth=2)', depth:2, dur:0.2, parallel:'start' },
+  { id:'tl-6b', agent:'Compliance Agent',  action:'[parallel] Receive delegation (depth=2)', depth:2, dur:0.2, parallel:'same' },
+  { id:'tl-7a', agent:'Tax Agent',         action:'[parallel] LLM: tax law analysis', depth:2, dur:5.0, parallel:'start' },
+  { id:'tl-7b', agent:'Compliance Agent',  action:'[parallel] LLM: compliance analysis', depth:2, dur:5.0, parallel:'same' },
+  { id:'tl-8',  agent:'Law Agent',         action:'[aggregate] LLM: synthesise all analyses → final_answer', depth:1, dur:5.0 },
+  { id:'tl-9',  agent:'Customer Agent',    action:'Extract AIMessage, build artifact', depth:0, dur:0.3 },
+  { id:'tl-10', agent:'Customer Agent',    action:'Return final response to User', depth:0, dur:0.1 },
+];
+
+let running = false;
+let simTimer = null;
+
+// ─────────────────────────────────────────────
+// Utility
+// ─────────────────────────────────────────────
+function setSample(i) {
+  document.getElementById('questionInput').value = SAMPLES[i];
+}
+
+function isFast() {
+  return document.getElementById('fastSim').checked;
+}
+
+document.getElementById('fastSim').addEventListener('change', function() {
+  document.getElementById('simSpeedTag').textContent = this.checked ? 'Fast mode (×6)' : 'Normal speed (~16s)';
+});
+
+function setButtons(busy) {
+  running = busy;
+  document.getElementById('btnLive').disabled = busy;
+  document.getElementById('btnSim').disabled = busy;
+}
+
+function showError(msg) {
+  const b = document.getElementById('errBanner');
+  b.textContent = '⚠ ' + msg;
+  b.classList.add('visible');
+}
+function clearError() {
+  document.getElementById('errBanner').classList.remove('visible');
+}
+
+// ─────────────────────────────────────────────
+// Service status
+// ─────────────────────────────────────────────
+const SVC_MAP = {
+  'registry': 'svc-registry',
+  'customer-agent': 'svc-customer',
+  'law-agent': 'svc-law',
+  'tax-agent': 'svc-tax',
+  'compliance-agent': 'svc-compliance'
+};
+
+async function checkStatus() {
+  Object.values(SVC_MAP).forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'svc-card checking';
+  });
+  const note = document.getElementById('statusNote');
+  note.style.display = 'none';
+  try {
+    const r = await fetch(PROXY + '/api/status', { signal: AbortSignal.timeout(5000) });
+    const data = await r.json();
+    let allOk = true;
+    for (const [name, info] of Object.entries(data)) {
+      const elId = SVC_MAP[name];
+      if (!elId) continue;
+      const el = document.getElementById(elId);
+      el.className = 'svc-card ' + (info.ok ? 'ok' : 'err');
+      if (!info.ok) allOk = false;
+    }
+    note.style.display = 'block';
+    if (allOk) {
+      note.textContent = '✓ All services online — ready for live demo';
+      note.style.color = 'var(--green)';
+    } else {
+      note.textContent = 'Some services offline. Start them with start_all.ps1 / start_all.sh, then start demo_proxy.py';
+      note.style.color = 'var(--yellow)';
+    }
+  } catch {
+    // proxy not running — mark all unknown
+    Object.values(SVC_MAP).forEach(id => {
+      document.getElementById(id).className = 'svc-card err';
+    });
+    note.style.display = 'block';
+    note.textContent = 'Cannot reach demo_proxy.py (http://localhost:8765). Start it with: python demo_proxy.py';
+    note.style.color = 'var(--red)';
+  }
+}
+
+// ─────────────────────────────────────────────
+// Timeline rendering
+// ─────────────────────────────────────────────
+function depthColor(d) {
+  return d === 0 ? '#6c63ff' : d === 1 ? '#f59e0b' : '#22c55e';
+}
+
+function initTimeline() {
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  TIMELINE_STEPS.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'tl-row pending';
+    row.id = s.id;
+    row.innerHTML = `
+      <div class="tl-agent" style="color:${depthColor(s.depth)}">${s.agent}</div>
+      <div class="tl-action">${s.action}</div>
+      <div class="tl-badge badge-pending" id="${s.id}-badge">Pending</div>
+      <div class="tl-dur" id="${s.id}-dur">—</div>`;
+    tl.appendChild(row);
+  });
+  document.getElementById('progressBar').style.width = '0';
+  document.getElementById('totalLatency').textContent = '';
+  resetFlowDiagram();
+  // hide result
+  document.getElementById('resultBox').classList.remove('visible');
+  document.getElementById('resultBox').textContent = '';
+  document.getElementById('resultMeta').innerHTML = '';
+  document.getElementById('resultError').classList.remove('visible');
+}
+
+function setStepStatus(id, status, dur) {
+  const row = document.getElementById(id);
+  if (!row) return;
+  row.className = 'tl-row ' + status + ' fade-in';
+  const badge = document.getElementById(id + '-badge');
+  const durEl = document.getElementById(id + '-dur');
+  badge.className = 'tl-badge badge-' + status;
+  badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+  if (dur !== undefined) durEl.textContent = dur.toFixed(2) + 's';
+}
+
+function setProgress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+// ─────────────────────────────────────────────
+// Flow diagram highlight
+// ─────────────────────────────────────────────
+function resetFlowDiagram() {
+  ['fn-user','fn-customer','fn-registry','fn-law','fn-tax','fn-compliance','fn-aggregate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.className = el.className.replace(/ ?(active|done|error)/g, '');
+  });
+  ['fa-0','fa-1','fa-2','fa-3','fa-4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'arrow';
+  });
+}
+
+function activateFlow(nodeIds, arrowIds) {
+  nodeIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.className = el.className.replace(/ ?(active|done)/g, '') + ' active'; }
+  });
+  arrowIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'arrow active';
+  });
+}
+
+function doneFlow(nodeId) {
+  const el = document.getElementById(nodeId);
+  if (el) el.className = el.className.replace(/ ?active/g, '') + ' done';
+}
+
+// ─────────────────────────────────────────────
+// Simulated Demo
+// ─────────────────────────────────────────────
+function runSim() {
+  if (running) return;
+  clearError();
+  setButtons(true);
+  initTimeline();
+
+  const speed = isFast() ? 6 : 1;
+  let t = 0;
+  let elapsed = 0;
+
+  // Define phases as [stepIndex, nodeId, arrowId, progressPct, simDur]
+  const phases = [
+    { step: 0, nodes:['fn-user','fn-customer'],   arrows:['fa-0'],         pct:5,   dur: TIMELINE_STEPS[0].dur },
+    { step: 1, nodes:['fn-customer'],              arrows:['fa-0'],         pct:12,  dur: TIMELINE_STEPS[1].dur },
+    { step: 2, nodes:['fn-customer','fn-registry'],arrows:['fa-0','fa-1','fa-2'], pct:18,  dur: TIMELINE_STEPS[2].dur },
+    { step: 3, nodes:['fn-law'],                   arrows:['fa-2','fa-3'],  pct:22,  dur: TIMELINE_STEPS[3].dur },
+    { step: 4, nodes:['fn-law'],                   arrows:['fa-3'],         pct:48,  dur: TIMELINE_STEPS[4].dur },
+    { step: 5, nodes:['fn-law'],                   arrows:['fa-3'],         pct:50,  dur: TIMELINE_STEPS[5].dur },
+    { step: 6, nodes:['fn-tax','fn-compliance'],   arrows:['fa-3','fa-4'],  pct:55,  dur: TIMELINE_STEPS[6].dur, parallel:true },
+    { step: 7, nodes:['fn-tax','fn-compliance'],   arrows:['fa-3','fa-4'],  pct:78,  dur: TIMELINE_STEPS[7].dur, parallel:true },
+    { step: 8, nodes:['fn-aggregate'],             arrows:['fa-4'],         pct:90,  dur: TIMELINE_STEPS[8].dur },
+    { step: 9, nodes:['fn-customer'],              arrows:['fa-0'],         pct:95,  dur: TIMELINE_STEPS[9].dur },
+    { step:10, nodes:['fn-user'],                  arrows:['fa-0'],         pct:100, dur: TIMELINE_STEPS[10].dur },
+  ];
+
+  let phIdx = 0;
+
+  function runPhase() {
+    if (phIdx >= phases.length) {
+      finishSim(elapsed);
+      return;
+    }
+    const ph = phases[phIdx++];
+    const stepId = TIMELINE_STEPS[ph.step].id;
+
+    // Handle parallel steps (6a/6b and 7a/7b)
+    let stepIds = [stepId];
+    if (ph.parallel) {
+      stepIds = [TIMELINE_STEPS[ph.step].id];
+      // also handle the 'b' counterpart
+      const nextIdx = ph.step; // already covers both since parallel steps share same 'step' index above
+      // Steps 6a/6b and 7a/7b: step indices 6 and 7 in TIMELINE_STEPS actually store 6a
+      // We handle 6b and 7b by peeking
+    }
+
+    setStepStatus(TIMELINE_STEPS[ph.step].id, 'running');
+    // Also handle parallel partner
+    const partnerMap = {6:7, 7:8}; // indices 6→7 and 7→8 are parallel pairs (6a,6b) and (7a,7b)
+    // Actually indices in TIMELINE_STEPS: 6=tl-6a, 7=tl-6b, 8=tl-7a, 9=tl-7b
+    // Let's just drive by TIMELINE_STEPS index directly
+    activateFlow(ph.nodes, ph.arrows);
+    setProgress(ph.pct);
+
+    const stepDur = ph.dur / speed;
+    elapsed += ph.dur;
+
+    simTimer = setTimeout(() => {
+      setStepStatus(TIMELINE_STEPS[ph.step].id, 'completed', ph.dur);
+      ph.nodes.forEach(n => doneFlow(n));
+      runPhase();
+    }, stepDur * 1000);
+  }
+
+  // Drive by TIMELINE_STEPS index one by one for accuracy
+  let stepIdx = 0;
+  let cumulativeTime = 0;
+
+  function nextStep() {
+    if (stepIdx >= TIMELINE_STEPS.length) {
+      finishSim(cumulativeTime);
+      return;
+    }
+    const s = TIMELINE_STEPS[stepIdx];
+    setStepStatus(s.id, 'running');
+
+    // Map step to flow nodes
+    const flowMap = {
+      0: { nodes:['fn-user','fn-customer'], arrows:['fa-0'] },
+      1: { nodes:['fn-customer'],           arrows:['fa-0'] },
+      2: { nodes:['fn-customer','fn-registry'], arrows:['fa-0','fa-1','fa-2'] },
+      3: { nodes:['fn-law'],                arrows:['fa-2','fa-3'] },
+      4: { nodes:['fn-law'],                arrows:['fa-3'] },
+      5: { nodes:['fn-law'],                arrows:['fa-3'] },
+      6: { nodes:['fn-tax'],                arrows:['fa-3','fa-4'] },
+      7: { nodes:['fn-compliance'],         arrows:['fa-3','fa-4'] },
+      8: { nodes:['fn-tax','fn-compliance'],arrows:['fa-4'] },
+      9: { nodes:['fn-compliance','fn-tax'],arrows:['fa-4'] },
+      10:{ nodes:['fn-aggregate'],          arrows:['fa-4'] },
+      11:{ nodes:['fn-customer'],           arrows:['fa-0'] },
+      12:{ nodes:['fn-user'],               arrows:[] },
+    };
+    const fm = flowMap[stepIdx] || { nodes:[], arrows:[] };
+    activateFlow(fm.nodes, fm.arrows);
+    setProgress(Math.round((stepIdx / TIMELINE_STEPS.length) * 95));
+
+    const dur = s.dur / speed;
+    cumulativeTime += s.dur;
+
+    simTimer = setTimeout(() => {
+      setStepStatus(s.id, 'completed', s.dur);
+      fm.nodes.forEach(n => doneFlow(n));
+      stepIdx++;
+      nextStep();
+    }, dur * 1000);
+  }
+
+  nextStep();
+}
+
+function finishSim(totalSec) {
+  setProgress(100);
+  document.getElementById('totalLatency').innerHTML =
+    `⏱ Total: <strong style="color:var(--green)">${totalSec.toFixed(1)}s</strong> (simulated)`;
+  setButtons(false);
+  // Show simulated result
+  showResult(
+    '⚡ [SIMULATED RESPONSE]\n\n' +
+    '## Legal Analysis\nThe company faces significant contract law liability under UCC and common law...\n\n' +
+    '## Tax Analysis\nTax evasion triggers IRS penalties, FBAR violations carry $10,000+ civil penalties...\n\n' +
+    '## Regulatory Compliance\nSEC reporting violations may constitute securities fraud under SOX...\n\n' +
+    '*Note: This is a simulated response. Run with live backend for real LLM analysis.*',
+    null, null, totalSec
+  );
+  showBarLive(totalSec);
+}
+
+// ─────────────────────────────────────────────
+// Live Demo
+// ─────────────────────────────────────────────
+async function runLive() {
+  if (running) return;
+  clearError();
+  const q = document.getElementById('questionInput').value.trim();
+  if (!q) { showError('Please enter a question'); return; }
+
+  setButtons(true);
+  initTimeline();
+
+  // Verify proxy is reachable
+  try {
+    await fetch(PROXY + '/api/status', { signal: AbortSignal.timeout(3000) });
+  } catch {
+    showError('Cannot reach demo proxy at localhost:8765. Start it first: python demo_proxy.py');
+    setButtons(false);
+    return;
+  }
+
+  // Animate timeline steps up to "waiting for response"
+  const preSteps = [0, 1, 2];
+  for (const idx of preSteps) {
+    const s = TIMELINE_STEPS[idx];
+    setStepStatus(s.id, 'running');
+    activateFlow(['fn-customer'], ['fa-0']);
+    setProgress(5 + idx * 5);
+    await sleep(300);
+    setStepStatus(s.id, 'completed', s.dur);
+  }
+  setProgress(15);
+  setStepStatus(TIMELINE_STEPS[3].id, 'running');
+  activateFlow(['fn-law'], ['fa-3']);
+
+  const t0 = Date.now();
+
+  // Animate "waiting" indicator on remaining steps
+  let waiting = true;
+  let waitIdx = 4;
+  const waitTimer = setInterval(() => {
+    if (!waiting) { clearInterval(waitTimer); return; }
+    if (waitIdx < TIMELINE_STEPS.length) {
+      // pulse current step
+      const s = TIMELINE_STEPS[waitIdx];
+      if (document.getElementById(s.id).className.includes('pending')) {
+        setStepStatus(s.id, 'running');
+      }
+    }
+  }, 4000);
+
+  try {
+    const resp = await fetch(PROXY + '/api/demo/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: q }),
+      signal: AbortSignal.timeout(330000),
+    });
+    waiting = false;
+    clearInterval(waitTimer);
+
+    const data = await resp.json();
+    const latency = data.latency || ((Date.now() - t0) / 1000);
+
+    if (!data.ok) {
+      // Mark remaining as error
+      for (let i = 3; i < TIMELINE_STEPS.length; i++) {
+        setStepStatus(TIMELINE_STEPS[i].id, 'error');
+      }
+      showError(data.error || 'Request failed');
+      setButtons(false);
+      return;
+    }
+
+    // Mark all remaining steps complete with estimated durations
+    const remDurs = [6.0, 0.01, 0.2, 0.2, 5.0, 5.0, 5.0, 0.3, 0.1];
+    for (let i = 3; i < TIMELINE_STEPS.length; i++) {
+      setStepStatus(TIMELINE_STEPS[i].id, 'completed', remDurs[i - 3] || 0.1);
+    }
+    ['fn-customer','fn-law','fn-tax','fn-compliance','fn-aggregate','fn-user'].forEach(doneFlow);
+    setProgress(100);
+    document.getElementById('totalLatency').innerHTML =
+      `⏱ Total: <strong style="color:var(--green)">${latency.toFixed(2)}s</strong>`;
+
+    showResult(data.answer, data.trace_id, data.context_id, latency);
+    document.getElementById('rawJson').textContent = JSON.stringify(data.raw, null, 2);
+    showBarLive(latency);
+
+  } catch (e) {
+    waiting = false;
+    clearInterval(waitTimer);
+    showError('Request failed or timed out: ' + e.message);
+    for (let i = 3; i < TIMELINE_STEPS.length; i++) {
+      setStepStatus(TIMELINE_STEPS[i].id, 'error');
+    }
+  }
+  setButtons(false);
+}
+
+// ─────────────────────────────────────────────
+// Result display
+// ─────────────────────────────────────────────
+function showResult(text, traceId, contextId, latency) {
+  const box = document.getElementById('resultBox');
+  const meta = document.getElementById('resultMeta');
+  box.textContent = text || '(no response)';
+  box.classList.add('visible');
+
+  let metaHtml = `<div class="meta-tag">Total latency: <span>${latency.toFixed(2)}s</span></div>`;
+  if (traceId) metaHtml += `<div class="meta-tag">trace_id: <span>${traceId}</span></div>`;
+  if (contextId) metaHtml += `<div class="meta-tag">context_id: <span>${contextId}</span></div>`;
+  meta.innerHTML = metaHtml;
+}
+
+// ─────────────────────────────────────────────
+// Bar chart
+// ─────────────────────────────────────────────
+function animateBars() {
+  const MAX = 35;
+  document.getElementById('barBase').style.width = (21 / MAX * 100) + '%';
+  document.getElementById('barOpt').style.width  = (16 / MAX * 100) + '%';
+}
+
+function showBarLive(sec) {
+  const MAX = 35;
+  const row = document.getElementById('barLiveRow');
+  const bar = document.getElementById('barLive');
+  const val = document.getElementById('barLiveVal');
+  row.style.display = 'flex';
+  bar.style.width = (Math.min(sec, MAX) / MAX * 100) + '%';
+  bar.textContent = sec.toFixed(1) + 's';
+  val.textContent = sec.toFixed(1) + 's';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+window.addEventListener('load', () => {
+  checkStatus();
+  setTimeout(animateBars, 600);
+});
+</script>
+</body>
+</html>

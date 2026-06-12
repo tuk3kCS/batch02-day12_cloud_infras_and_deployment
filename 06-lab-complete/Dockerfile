@@ -1,5 +1,5 @@
 # ============================================================
-# Production Dockerfile — Multi-stage, < 500 MB, non-root
+# Production Dockerfile — Legal Multi-Agent System Supervisor
 # ============================================================
 
 # Stage 1: Builder
@@ -25,10 +25,16 @@ WORKDIR /app
 # Copy packages từ builder
 COPY --from=builder /root/.local /home/agent/.local
 
-# Copy application
-COPY app/ ./app/
+# Copy application packages
+COPY common/ ./common/
+COPY registry/ ./registry/
+COPY compliance_agent/ ./compliance_agent/
+COPY customer_agent/ ./customer_agent/
+COPY law_agent/ ./law_agent/
+COPY tax_agent/ ./tax_agent/
+COPY start_all.py ./start_all.py
 
-RUN chown -R agent:agent /app
+RUN chown -R agent:agent /app /home/agent/.local
 
 USER agent
 
@@ -37,12 +43,13 @@ ENV PYTHONPATH=/app:/home/agent/.local/lib/python3.11/site-packages
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-EXPOSE 8000
+# Expose dynamic PORT (e.g. 10100 for customer agent gateway)
+EXPOSE 10100
 
-# Health check
+# Health check (pointing to customer agent health endpoint)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c \
-    "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" \
+    "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.getenv(\"PORT\", \"10100\")}/health')" \
     || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["python", "start_all.py"]

@@ -15,7 +15,6 @@ from typing import Any
 
 
 import redis
-from app.config import settings
 
 LOG_BUFFER: deque[dict[str, Any]] = deque(maxlen=200)
 REDIS_LOG_KEY = "dashboard:logs"
@@ -26,10 +25,12 @@ _redis_client: redis.Redis | None = None
 def get_redis_client() -> redis.Redis | None:
     global _redis_client
     if _redis_client is None:
-        try:
-            _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
-        except Exception:
-            pass
+        redis_url = os.getenv("REDIS_URL", "").strip()
+        if redis_url:
+            try:
+                _redis_client = redis.from_url(redis_url, decode_responses=True)
+            except Exception:
+                pass
     return _redis_client
 
 
