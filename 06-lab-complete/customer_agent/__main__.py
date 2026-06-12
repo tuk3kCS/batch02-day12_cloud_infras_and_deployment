@@ -109,6 +109,105 @@ async def main() -> None:
             return HTMLResponse(content=demo_path.read_text(encoding="utf-8"))
         return HTMLResponse(content="<h1>agent_interaction_demo.html not found</h1>", status_code=404)
 
+    # ── Demo Proxy Endpoints ────────────────────────
+    from pydantic import BaseModel
+    import httpx
+    import time
+    from uuid import uuid4
+
+    class SendRequest(BaseModel):
+        message: str
+
+    SERVICES = {
+        "registry":         {"url": "http://localhost:10000", "health": "/health"},
+        "customer-agent":   {"url": f"http://localhost:{PORT}", "health": "/.well-known/agent.json"},
+        "law-agent":        {"url": "http://localhost:10101", "health": "/.well-known/agent.json"},
+        "tax-agent":        {"url": "http://localhost:10102", "health": "/.well-known/agent.json"},
+        "compliance-agent": {"url": "http://localhost:10103", "health": "/.well-known/agent.json"},
+    }
+
+    @app.get("/api/status", tags=["demo"])
+    async def status():
+        results = {}
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            for name, cfg in SERVICES.items():
+                try:
+                    resp = await client.get(cfg["url"] + cfg["health"])
+                    results[name] = {"ok": resp.status_code < 400, "code": resp.status_code, "url": cfg["url"]}
+                except Exception as exc:
+                    results[name] = {"ok": False, "code": None, "url": cfg["url"], "error": str(exc)[:80]}
+        return results
+
+    @app.post("/api/demo/send", tags=["demo"])
+    async def send_message(req: SendRequest):
+        from a2a.client import A2AClient
+        from a2a.types import AgentCard, Message, MessageSendParams, Part, Role, SendMessageRequest, TextPart
+
+        trace_id = str(uuid4())
+        context_id = str(uuid4())
+
+        # Pass API key header if configured in .env
+        api_key = os.getenv("A2A_API_KEY", "").strip()
+        headers = {"X-API-Key": api_key} if api_key else {}
+
+        t_start = time.monotonic()
+        customer_url = f"http://localhost:{PORT}"
+        async with httpx.AsyncClient(timeout=300.0, headers=headers) as http_client:
+            try:
+                card_resp = await http_client.get(f"{customer_url}/.well-known/agent.json")
+                card_resp.raise_for_status()
+            except Exception as exc:
+                return {"ok": False, "error": f"Cannot reach Customer Agent at {customer_url}: {exc}", "latency": 0}
+
+            agent_card = AgentCard.model_validate(card_resp.json())
+            client = A2AClient(httpx_client=http_client, agent_card=agent_card)
+
+            message = Message(
+                role=Role.user,
+                parts=[Part(root=TextPart(text=req.message))],
+                message_id=str(uuid4()),
+                context_id=context_id,
+                metadata={"trace_id": trace_id, "context_id": context_id, "delegation_depth": 0},
+            )
+            request = SendMessageRequest(id=str(uuid4()), params=MessageSendParams(message=message))
+
+            try:
+                response = await client.send_message(request)
+            except Exception as exc:
+                return {"ok": False, "error": str(exc), "latency": round(time.monotonic() - t_start, 2)}
+
+        latency = round(time.monotonic() - t_start, 2)
+        
+        # Helper function to extract text
+        text = ""
+        res_obj = response
+        if hasattr(res_obj, "root"):
+            res_obj = res_obj.root
+        result = getattr(res_obj, "result", None)
+        if result is not None:
+            artifacts = getattr(result, "artifacts", None)
+            if artifacts:
+                for artifact in artifacts:
+                    for part in getattr(artifact, "parts", []) or []:
+                        inner = getattr(part, "root", part)
+                        text += getattr(inner, "text", "") or ""
+            if not text:
+                for part in getattr(result, "parts", []) or []:
+                    inner = getattr(part, "root", part)
+                    text += getattr(inner, "text", "") or ""
+            if not text:
+                for msg in getattr(result, "history", []) or []:
+                    for part in getattr(msg, "parts", []) or []:
+                        inner = getattr(part, "root", part)
+                        text += getattr(inner, "text", "") or ""
+
+        try:
+            raw = response.model_dump(mode="json") if hasattr(response, "model_dump") else str(response)
+        except Exception:
+            raw = str(response)
+
+        return {"ok": True, "answer": text, "latency": latency, "trace_id": trace_id, "context_id": context_id, "raw": raw}
+
     # Challenge 2: API key auth (enabled when A2A_API_KEY is set in .env)
     from common.auth import add_auth_middleware
     add_auth_middleware(app)

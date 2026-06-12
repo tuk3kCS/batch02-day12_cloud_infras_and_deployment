@@ -421,7 +421,10 @@ python test_client.py</div>
 // ─────────────────────────────────────────────
 // Constants & State
 // ─────────────────────────────────────────────
-const PROXY = 'http://localhost:8765';
+let PROXY = 'http://localhost:8765';
+if (window.location.protocol.startsWith('http')) {
+  PROXY = window.location.origin;
+}
 
 const SAMPLES = [
   "If a company breaks a contract and avoids taxes, what are the legal, tax, and compliance consequences?",
