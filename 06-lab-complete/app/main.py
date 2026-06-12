@@ -16,6 +16,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import redis
@@ -23,8 +24,10 @@ import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security.api_key import APIKeyHeader
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from app.dashboard import dashboard_state, record_log
 from app.config import settings
 
 
@@ -82,6 +85,7 @@ def month_key() -> str:
 
 def log_event(event: str, **fields: Any) -> None:
     logger.info(json.dumps({"event": event, "instance": INSTANCE_ID, **fields}))
+    record_log(event, INSTANCE_ID, **fields)
 
 
 @asynccontextmanager
@@ -299,6 +303,45 @@ def metrics(_user_id: str = Depends(verify_api_key)):
     }
 
 
+@app.get("/dashboard/state")
+def get_dashboard_state():
+    redis_ok = False
+    redis_info: dict[str, Any] | None = None
+    if _redis is not None:
+        try:
+            _redis.ping()
+            redis_ok = True
+            redis_info = _redis.info(section="default")
+        except Exception:
+            redis_ok = False
+
+    return dashboard_state(
+        app_name=settings.app_name,
+        app_version=settings.app_version,
+        environment=settings.environment,
+        instance_id=INSTANCE_ID,
+        uptime_seconds=round(time.time() - START_TIME, 1),
+        total_requests=_request_count,
+        error_count=_error_count,
+        is_ready=_is_ready,
+        redis_ok=redis_ok,
+        redis_info=redis_info,
+        settings_snapshot={
+            "host": settings.host,
+            "port": settings.port,
+            "environment": settings.environment,
+            "debug": settings.debug,
+            "logLevel": settings.log_level,
+            "llmModel": settings.llm_model,
+            "rateLimitPerMinute": settings.rate_limit_per_minute,
+            "monthlyBudgetUsd": settings.monthly_budget_usd,
+            "redisConfigured": bool(settings.redis_url),
+            "openAIConfigured": bool(settings.openai_api_key),
+            "allowedOrigins": settings.allowed_origins,
+        },
+    )
+
+
 def _handle_signal(signum, _frame):
     global _is_ready
     _is_ready = False
@@ -307,6 +350,11 @@ def _handle_signal(signum, _frame):
 
 signal.signal(signal.SIGTERM, _handle_signal)
 signal.signal(signal.SIGINT, _handle_signal)
+
+
+frontend_dist = Path(__file__).resolve().parents[1] / "frontend-dist"
+if frontend_dist.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(frontend_dist), html=True), name="dashboard")
 
 
 if __name__ == "__main__":
