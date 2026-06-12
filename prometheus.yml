@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'production-ai-agent'
+    metrics_path: '/metrics'
+    scheme: 'http'
+    # API key is required to access /metrics in production, so we specify authorization headers
+    # In real production, scrape targets can use Bearer token or custom header authentication
+    # authorization:
+    #   type: Bearer
+    #   credentials: 'your-agent-api-key'
+    static_configs:
+      - targets: ['localhost:8000']

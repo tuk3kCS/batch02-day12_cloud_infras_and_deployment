@@ -35,6 +35,8 @@ COPY 06-lab-complete/railway.toml ./06-lab-complete/railway.toml
 COPY 06-lab-complete/render.yaml ./06-lab-complete/render.yaml
 COPY 06-lab-complete/nginx.conf ./06-lab-complete/nginx.conf
 COPY frontend/package.json ./frontend/package.json
+COPY .github/ ./.github/
+COPY prometheus.yml ./prometheus.yml
 
 RUN chown -R agent:agent /app /home/agent/.local
 
