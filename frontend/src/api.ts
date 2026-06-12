@@ -1,5 +1,6 @@
 import type { DashboardState } from "./types";
 
+// @ts-ignore
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export async function fetchDashboardState(signal?: AbortSignal): Promise<DashboardState> {

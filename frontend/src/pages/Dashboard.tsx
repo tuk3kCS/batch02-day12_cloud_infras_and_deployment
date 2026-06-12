@@ -57,8 +57,8 @@ export function Dashboard({ data }: Props) {
               ["Compose files", data.inventory.counts.composeFiles, Server],
               ["CI/CD configs", data.inventory.counts.cicdWorkflows, GitBranch],
               ["Monitoring configs", data.inventory.counts.monitoringConfigs, Activity]
-            ].map(([label, value, Icon]) => {
-              const IconComponent = Icon as typeof Server;
+            ].map(([label, value, Icon]: [string, number, any]) => {
+              const IconComponent = Icon;
               return (
                 <div key={String(label)} className="panel-muted flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
