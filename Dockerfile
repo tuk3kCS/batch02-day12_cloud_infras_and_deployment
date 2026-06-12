@@ -33,6 +33,8 @@ COPY 06-lab-complete/docker-compose.yml ./06-lab-complete/docker-compose.yml
 COPY 06-lab-complete/Dockerfile ./06-lab-complete/Dockerfile
 COPY 06-lab-complete/railway.toml ./06-lab-complete/railway.toml
 COPY 06-lab-complete/render.yaml ./06-lab-complete/render.yaml
+COPY 06-lab-complete/nginx.conf ./06-lab-complete/nginx.conf
+COPY frontend/package.json ./frontend/package.json
 
 RUN chown -R agent:agent /app /home/agent/.local
 
