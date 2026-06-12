@@ -130,6 +130,14 @@ async def request_middleware(request: Request, call_next):
     global _request_count, _error_count
     started = time.time()
     _request_count += 1
+    if _redis is not None:
+        try:
+            _redis.sadd("active_workers", INSTANCE_ID)
+            _redis.incr(f"worker:requests:{INSTANCE_ID}")
+            _redis.expire(f"worker:requests:{INSTANCE_ID}", 86400)
+            _redis.expire("active_workers", 86400)
+        except Exception:
+            pass
     try:
         response: Response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -315,13 +323,27 @@ def get_dashboard_state():
         except Exception:
             redis_ok = False
 
+    actual_total_requests = _request_count
+    worker_requests_map = {}
+    if redis_ok and _redis is not None:
+        try:
+            workers = _redis.smembers("active_workers")
+            if workers:
+                actual_total_requests = 0
+                for w_id in workers:
+                    count = int(_redis.get(f"worker:requests:{w_id}") or 0)
+                    worker_requests_map[w_id] = count
+                    actual_total_requests += count
+        except Exception:
+            pass
+
     return dashboard_state(
         app_name=settings.app_name,
         app_version=settings.app_version,
         environment=settings.environment,
         instance_id=INSTANCE_ID,
         uptime_seconds=round(time.time() - START_TIME, 1),
-        total_requests=_request_count,
+        total_requests=actual_total_requests,
         error_count=_error_count,
         is_ready=_is_ready,
         redis_ok=redis_ok,
@@ -339,6 +361,7 @@ def get_dashboard_state():
             "openAIConfigured": bool(settings.openai_api_key),
             "allowedOrigins": settings.allowed_origins,
         },
+        worker_requests=worker_requests_map,
     )
 
 

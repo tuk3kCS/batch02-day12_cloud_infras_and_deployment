@@ -239,6 +239,7 @@ def dashboard_state(
     redis_ok: bool,
     redis_info: dict[str, Any] | None,
     settings_snapshot: dict[str, Any],
+    worker_requests: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     services = detect_services()
     inventory = repository_inventory()
@@ -271,6 +272,7 @@ def dashboard_state(
             "errorCount": error_count,
             "ready": is_ready,
             "redis": "connected" if redis_ok else "unavailable",
+            "workerRequests": worker_requests or {},
         },
         "inventory": inventory,
         "architecture": architecture,

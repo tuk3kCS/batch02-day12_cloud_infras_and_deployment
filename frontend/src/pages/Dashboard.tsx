@@ -18,6 +18,19 @@ function formatUptime(seconds: number) {
 }
 
 export function Dashboard({ data }: Props) {
+  const workerEntries = Object.entries(data.overview.workerRequests || {});
+  workerEntries.sort((a, b) => a[0].localeCompare(b[0]));
+
+  const w1 = workerEntries[0] ? `W1 (${workerEntries[0][0].slice(-4)}): ${workerEntries[0][1]}` : "";
+  const w2 = workerEntries[1] ? `W2 (${workerEntries[1][0].slice(-4)}): ${workerEntries[1][1]}` : "";
+
+  let reqDetail = "Total HTTP requests";
+  if (w1 && w2) {
+    reqDetail = `${w1} | ${w2}`;
+  } else if (w1) {
+    reqDetail = w1;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -32,7 +45,7 @@ export function Dashboard({ data }: Props) {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Uptime" value={formatUptime(data.overview.uptimeSeconds)} icon={Clock} detail={data.generatedAt} />
-        <MetricCard title="Requests" value={data.overview.totalRequests} icon={Activity} detail="Total HTTP requests" />
+        <MetricCard title="Requests" value={data.overview.totalRequests} icon={Activity} detail={reqDetail} />
         <MetricCard title="Errors" value={data.overview.errorCount} icon={AlertTriangle} detail="Middleware error count" />
         <MetricCard title="Redis" value={data.overview.redis} icon={Database} detail="State store readiness" />
       </div>

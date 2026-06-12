@@ -20,6 +20,7 @@ export interface Overview {
   errorCount: number;
   ready: boolean;
   redis: string;
+  workerRequests: Record<string, number>;
 }
 
 export interface Inventory {
