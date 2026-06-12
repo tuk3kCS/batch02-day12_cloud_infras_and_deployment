@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 PORT = int(os.getenv("PORT", "10100"))
 AGENT_ENDPOINT = f"http://localhost:{PORT}"
 
+from pydantic import BaseModel
+class SendRequest(BaseModel):
+    message: str
+
 
 async def _register_with_retry(max_attempts: int = 10, delay: float = 2.0) -> None:
     """Retry registration until the registry is up."""
@@ -97,7 +101,7 @@ async def main() -> None:
     from pathlib import Path
 
     for r in list(app.routes):
-        if r.path == "/":
+        if r.path == "/" and "GET" in r.methods:
             app.routes.remove(r)
 
     @app.get("/", response_class=HTMLResponse)
@@ -110,13 +114,9 @@ async def main() -> None:
         return HTMLResponse(content="<h1>agent_interaction_demo.html not found</h1>", status_code=404)
 
     # ── Demo Proxy Endpoints ────────────────────────
-    from pydantic import BaseModel
     import httpx
     import time
     from uuid import uuid4
-
-    class SendRequest(BaseModel):
-        message: str
 
     SERVICES = {
         "registry":         {"url": "http://localhost:10000", "health": "/health"},
